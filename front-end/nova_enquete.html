@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Nova Enquete</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Criar Nova Enquete</h1>
+        <nav>
+            <ul>
+                <li><a href="index.html">Início</a></li>
+                <li><a href="enquetes.html">Ver Enquetes</a></li>
+                <li><a href="nova-enquete.html">Criar Nova Enquete</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <form id="form-nova-enquete" action="#" method="POST">
+            <label for="titulo">Título da Enquete:</label>
+            <input type="text" id="titulo" name="titulo" required>
+
+            <label for="descricao">Descrição:</label>
+            <textarea id="descricao" name="descricao" required></textarea>
+
+            <label for="data-fim">Data de Término:</label>
+            <input type="date" id="data-fim" name="data-fim" required>
+
+            <button type="submit">Criar Enquete</button>
+        </form>
+    </main>
+    <footer>
+        <p>&copy; 2025 Enquetes App. Todos os direitos reservados.</p>
+    </footer>
+</body>
+</html>
