@@ -15,7 +15,14 @@ class EnqueteController {
 
             const enquetes = await prisma.enquete.findMany({
                 where: { autorId: userId },
-                include: { opcoes: true, autor: true },
+                include: {
+                    opcoes: {
+                        include: {
+                            _count: { select: { votosRegistro: true } }
+                        }
+                    },
+                    autor: true
+                }
             });
 
             res.status(200).json(enquetes);
@@ -31,7 +38,14 @@ class EnqueteController {
             console.log("Listando todas as enquetes disponíveis");
 
             const enquetes = await prisma.enquete.findMany({
-                include: { opcoes: true, autor: { select: { username: true, email: true } } },
+                include: {
+                    opcoes: {
+                        include: {
+                            _count: { select: { votosRegistro: true } }
+                        }
+                    },
+                    autor: { select: { username: true, email: true } }
+                }
             });
 
             res.status(200).json(enquetes);
@@ -96,18 +110,22 @@ class EnqueteController {
             const votoExistente = await prisma.voto.findFirst({
                 where: {
                     userId,
-                    opcao: {
-                        enqueteId: enqueteId, // 🔥 Correção aplicada aqui
-                    },
+                    opcao: { enqueteId: enqueteId }
                 },
             });
 
             if (votoExistente) {
-                console.log(`Removendo voto anterior do usuário ${userId} na enquete ${enqueteId}...`);
-                await prisma.voto.delete({ where: { id: votoExistente.id } });
+                if (votoExistente.opcaoId === opcaoId) {
+                    console.log(`Removendo voto do usuário ${userId} na opção ${opcaoId}`);
+                    await prisma.voto.delete({
+                        where: { id: votoExistente.id },
+                    });
+                    return res.status(200).json({ message: "Voto removido." });
+                } else {
+                    return res.status(400).json({ message: "Você já votou nesta enquete." });
+                }
             }
 
-            // Registra o novo voto
             await prisma.voto.create({
                 data: {
                     userId,
@@ -124,6 +142,37 @@ class EnqueteController {
         }
     }
 
+    // Método para buscar uma enquete por ID e incluir a contagem de votos
+    static async buscarEnquetePorId(req, res) {
+        try {
+            const enqueteId = parseInt(req.params.id);
+            if (isNaN(enqueteId)) {
+                return res.status(400).json({ message: "ID inválido." });
+            }
+
+            const enquete = await prisma.enquete.findUnique({
+                where: { id: enqueteId },
+                include: {
+                    opcoes: {
+                        include: {
+                            _count: { select: { votosRegistro: true } }
+                        }
+                    },
+                    autor: { select: { username: true } }
+                },
+            });
+
+            if (!enquete) {
+                return res.status(404).json({ message: "Enquete não encontrada" });
+            }
+
+            res.status(200).json(enquete);
+        } catch (error) {
+            console.error("Erro ao buscar enquete:", error.message);
+            res.status(500).json({ message: "Erro ao buscar enquete.", error: error.message });
+        }
+    }
+
     // Método para atualizar o título de uma enquete
     static async atualizarTitulo(req, res) {
         try {
@@ -132,15 +181,6 @@ class EnqueteController {
 
             if (!titulo || isNaN(enqueteId)) {
                 return res.status(400).json({ message: "Dados inválidos." });
-            }
-
-            // Verifica se a enquete existe antes de atualizar
-            const enqueteExistente = await prisma.enquete.findUnique({
-                where: { id: enqueteId },
-            });
-
-            if (!enqueteExistente) {
-                return res.status(404).json({ message: "Enquete não encontrada." });
             }
 
             const enqueteAtualizada = await prisma.enquete.update({
@@ -152,30 +192,6 @@ class EnqueteController {
         } catch (error) {
             console.error("Erro ao atualizar título:", error.message);
             res.status(500).json({ message: "Erro ao atualizar título.", error: error.message });
-        }
-    }
-
-    // Método para buscar uma enquete por ID
-    static async buscarEnquetePorId(req, res) {
-        try {
-            const enqueteId = parseInt(req.params.id);
-            if (isNaN(enqueteId)) {
-                return res.status(400).json({ message: "ID inválido." });
-            }
-
-            const enquete = await prisma.enquete.findUnique({
-                where: { id: enqueteId },
-                include: { opcoes: true, autor: { select: { username: true } } },
-            });
-
-            if (!enquete) {
-                return res.status(404).json({ message: "Enquete não encontrada" });
-            }
-
-            res.status(200).json(enquete);
-        } catch (error) {
-            console.error("Erro ao buscar enquete:", error.message);
-            res.status(500).json({ message: "Erro ao buscar enquete.", error: error.message });
         }
     }
 

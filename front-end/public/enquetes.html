@@ -12,6 +12,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand" href="index.html">Página Inicial</a>
+            <button class="btn btn-outline-light" onclick="logout()">Sair</button>
         </div>
     </nav>
 
@@ -46,7 +47,17 @@
         </div>
     </div>
 
+    <!-- Container para notificações -->
+    <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1050;"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../assets/js/enquete.js"></script>
+
+    <script>
+        function logout() {
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+    </script>
 </body>
 </html>
