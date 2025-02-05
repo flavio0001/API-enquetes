@@ -1,6 +1,5 @@
 document.addEventListener("DOMContentLoaded", async () => {
     const listaEnquetes = document.getElementById("lista-enquetes");
-    let votosUsuario = {}; 
 
     function exibirMensagem(tipo, mensagem) {
         let toastContainer = document.getElementById("toast-container");
@@ -29,7 +28,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     async function carregarEnquetes() {
         try {
-            const response = await fetch("http://localhost:8000/enquetes/public");
+            const token = localStorage.getItem("token");
+            if (!token) {
+                exibirMensagem("warning", "Você precisa estar logado como administrador.");
+                window.location.href = "login.html";
+                return;
+            }
+
+            const response = await fetch("http://localhost:8000/enquetes/public", {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
 
             if (!response.ok) throw new Error("Erro ao carregar enquetes.");
 
@@ -57,56 +65,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 listaEnquetes.appendChild(div);
             });
-
-            await carregarVotosUsuario();
         } catch (error) {
             console.error("Erro ao carregar enquetes:", error);
             listaEnquetes.innerHTML = "<p class='text-danger text-center'>Erro ao carregar enquetes.</p>";
         }
     }
 
-    async function carregarVotosUsuario() {
-        let token = localStorage.getItem("token");
-
-        if (!token) return;
-
-        try {
-            const response = await fetch("http://localhost:8000/enquetes/votos", {
-                method: "GET",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                }
-            });
-
-            if (response.ok) {
-                const votos = await response.json();
-                votosUsuario = votos.reduce((acc, voto) => {
-                    acc[voto.enqueteId] = voto.opcaoId;
-                    return acc;
-                }, {});
-            }
-        } catch (error) {
-            console.error("Erro ao carregar votos do usuário:", error);
-        }
-    }
-
     window.abrirModal = async (id) => {
         try {
-            let token = localStorage.getItem("token");
-
+            const token = localStorage.getItem("token");
             if (!token) {
-                exibirMensagem("warning", "Você precisa estar logado para acessar esta enquete.");
-                window.location.href = "dashboard.html";
+                exibirMensagem("warning", "Você precisa estar logado como administrador.");
                 return;
             }
 
             const response = await fetch(`http://localhost:8000/enquetes/${id}`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                }
+                headers: { "Authorization": `Bearer ${token}` }
             });
 
             if (!response.ok) throw new Error("Erro ao buscar detalhes da enquete.");
@@ -115,35 +89,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             document.getElementById("modalTitulo").innerText = enquete.titulo;
             document.getElementById("modalDescricao").innerText = enquete.descricao;
+            document.getElementById("modalAutorId").innerText = enquete.autor.id;
+            document.getElementById("modalAutorNome").innerText = enquete.autor.username;
+            document.getElementById("modalCriadoEm").innerText = new Date(enquete.criadoEm).toLocaleString();
+            document.getElementById("modalDataFim").innerText = new Date(enquete.dataFim).toLocaleString();
 
             const opcoesContainer = document.getElementById("modalOpcoes");
             opcoesContainer.innerHTML = "";
 
-            await carregarVotosUsuario();
-            let opcaoVotada = votosUsuario[id] || null;
-
             enquete.opcoes.forEach(opcao => {
                 const totalVotos = opcao._count?.votosRegistro || 0;
-
-                const btn = document.createElement("button");
-                btn.className = "btn btn-outline-secondary d-block w-100 mt-2";
-                btn.innerText = `${opcao.texto} (${totalVotos} votos)`;
-                btn.onclick = () => votarOpcao(enquete.id, opcao.id);
-
-                if (opcaoVotada) {
-                    if (opcaoVotada === opcao.id) {
-                        btn.classList.add("btn-success");
-                    } else {
-                        btn.disabled = true;
-                    }
-                }
-
-                opcoesContainer.appendChild(btn);
+                const opcaoItem = document.createElement("li");
+                opcaoItem.className = "list-group-item";
+                opcaoItem.innerText = `${opcao.texto} - ${totalVotos} votos`;
+                opcoesContainer.appendChild(opcaoItem);
             });
 
-            const btnDenunciar = document.getElementById("btnDenunciar");
-            btnDenunciar.setAttribute("data-enquete-id", id);
-            btnDenunciar.style.display = "block"; 
+            document.getElementById("btnRemover").setAttribute("data-enquete-id", id);
 
             const modal = new bootstrap.Modal(document.getElementById("modalEnquete"));
             modal.show();
@@ -153,39 +115,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     };
 
-    window.votarOpcao = async (idEnquete, idOpcao) => {
-        let token = localStorage.getItem("token");
-
-        if (!token) {
-            exibirMensagem("warning", "Você precisa estar logado para votar.");
-            return;
-        }
+    document.getElementById("btnRemover").addEventListener("click", async function () {
+        const idEnquete = this.getAttribute("data-enquete-id");
+        if (!idEnquete) return;
 
         try {
-            const response = await fetch(`http://localhost:8000/enquetes/opcoes/${idOpcao}/votar`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                }
+            const token = localStorage.getItem("token");
+
+            const response = await fetch(`http://localhost:8000/enquetes/${idEnquete}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` }
             });
 
-            const resultado = await response.json();
+            if (!response.ok) throw new Error("Erro ao remover enquete.");
 
-            if (!response.ok) throw new Error(resultado.message || "Erro ao votar.");
-
-            votosUsuario[idEnquete] = idOpcao;
-
-            exibirMensagem("success", "Seu voto foi registrado com sucesso!");
-
-            await carregarVotosUsuario();
+            exibirMensagem("success", "Enquete removida com sucesso.");
             await carregarEnquetes();
-            abrirModal(idEnquete);
+
+            const modal = bootstrap.Modal.getInstance(document.getElementById("modalEnquete"));
+            modal.hide();
         } catch (error) {
-            console.error("Erro ao votar:", error);
-            exibirMensagem("danger", "Erro ao registrar voto.");
+            console.error("Erro ao remover enquete:", error);
+            exibirMensagem("danger", "Erro ao remover enquete.");
         }
-    };
+    });
 
     await carregarEnquetes();
 });

@@ -3,60 +3,74 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"  // Ou "postgresql", dependendo do banco
+  provider = "mysql" // Ou "postgresql", dependendo do banco
   url      = env("DATABASE_URL")
 }
 
 // Definição dos tipos de usuário
 model TipoUsuario {
-  id       Int     @id @default(autoincrement())
-  nome     String  @unique
-  usuarios User[]  // Relacionamento 1:N com os usuários
+  id       Int    @id @default(autoincrement())
+  nome     String @unique
+  usuarios User[] // Relacionamento 1:N com os usuários
 }
 
 // Definição dos usuários
 model User {
-  id        Int        @id @default(autoincrement())
-  username  String     @unique
-  email     String     @unique
+  id        Int         @id @default(autoincrement())
+  username  String      @unique
+  email     String      @unique
   password  String
   tipoId    Int
   tipo      TipoUsuario @relation(fields: [tipoId], references: [id], onDelete: Cascade)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  enquetes  Enquete[]  // Relacionamento 1:N com as enquetes criadas pelo usuário
-  votos     Voto[]     // Relacionamento 1:N com os votos feitos pelo usuário
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  enquetes  Enquete[] // Relacionamento 1:N com as enquetes criadas pelo usuário
+  votos     Voto[] // Relacionamento 1:N com os votos feitos pelo usuário
+  denuncias Denuncia[] // Relacionamento 1:N com as denúncias feitas pelo usuário
 }
 
 // Definição das enquetes
 model Enquete {
-  id        Int      @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   titulo    String
-  descricao String   @default("")
-  criadoEm  DateTime @default(now())
+  descricao String     @default("")
+  criadoEm  DateTime   @default(now())
   dataFim   DateTime
   autorId   Int
-  autor     User     @relation(fields: [autorId], references: [id], onDelete: Cascade) // Adicionado relacionamento explícito
-  opcoes    Opcao[]  // Relacionamento 1:N com Opção
+  autor     User       @relation(fields: [autorId], references: [id], onDelete: Cascade) // Adicionado relacionamento explícito
+  opcoes    Opcao[] // Relacionamento 1:N com Opção
+  denuncias Denuncia[] // Relacionamento 1:N com as denúncias recebidas pela enquete
 }
 
 // Definição das opções de resposta
 model Opcao {
-  id        Int      @id @default(autoincrement())
-  texto     String
-  enqueteId Int
-  enquete   Enquete  @relation(fields: [enqueteId], references: [id], onDelete: Cascade)
+  id            Int     @id @default(autoincrement())
+  texto         String
+  enqueteId     Int
+  enquete       Enquete @relation(fields: [enqueteId], references: [id], onDelete: Cascade)
   votosRegistro Voto[] // Relacionamento 1:N com os votos
 }
 
 // Definição dos votos
 model Voto {
-  id        Int    @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   userId    Int
   opcaoId   Int
-  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  opcao     Opcao @relation(fields: [opcaoId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opcao     Opcao    @relation(fields: [opcaoId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@unique([userId, opcaoId]) // Garante que um usuário só pode votar uma vez por opção
+}
+
+model Denuncia {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  enqueteId Int
+  criadoEm  DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enquete Enquete @relation(fields: [enqueteId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, enqueteId]) // Usuário pode denunciar uma enquete apenas uma vez
 }

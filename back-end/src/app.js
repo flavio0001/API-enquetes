@@ -4,17 +4,18 @@ import errorHandler from "./middlewares/error-handler.js";
 import enqueteRoutes from "./rotas/enqueteRoutes.js";
 import userRoutes from "./rotas/user-routes.js"; 
 import DashboardRoutes from "./rotas/dashboardRoutes.js";
+import denunciaRoutes from "./rotas/denunciaRoutes.js";
 
 const app = express();
 
-// ✅ Configuração de CORS para permitir qualquer origem
+// Configuração de CORS para permitir qualquer origem
 app.use(cors({
-    origin: "*", // Permite requisições de qualquer origem
+    origin: "*",
     methods: "GET,POST,PUT,DELETE,OPTIONS",
     allowedHeaders: "Content-Type, Authorization"
 }));
 
-// ✅ Desativando Content Security Policy (CSP)
+// Desativando Content Security Policy (CSP)
 app.use((req, res, next) => {
     res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;");
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -29,6 +30,7 @@ app.use(express.json());
 app.use("/", DashboardRoutes);
 app.use("/enquetes", enqueteRoutes);
 app.use("/users", userRoutes); 
+app.use("/denuncias", denunciaRoutes);
 
 // Middleware de tratamento de erros
 app.use(errorHandler);

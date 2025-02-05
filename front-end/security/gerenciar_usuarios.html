@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Usuários</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="dashboard-panel-admin.html">Painel Administrativo</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Conteúdo Principal -->
+    <div class="container mt-4">
+        <h2>Gerenciar Usuários</h2>
+        
+        <!-- Botões de Filtragem -->
+        <div class="btn-group mb-3" role="group">
+            <button id="filtro-clientes" class="btn btn-primary">Clientes</button>
+            <button id="filtro-administradores" class="btn btn-secondary">Administradores</button>
+        </div>
+
+        <!-- Lista de Usuários -->
+        <div id="lista-usuarios" class="list-group"></div>
+    </div>
+
+    <!-- Modal de Informações do Usuário -->
+    <div class="modal fade" id="modalUsuario" tabindex="-1" aria-labelledby="modalUsuarioLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalhes do Usuário</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Nome:</strong> <span id="modalNome"></span></p>
+                    <p><strong>Email:</strong> <span id="modalEmail"></span></p>
+                    <p><strong>Celular:</strong> <span id="modalCelular"></span></p>
+                    <p><strong>Tipo:</strong> <span id="modalTipo"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnAdicionarAdmin" class="btn btn-success">Adicionar Administração</button>
+                    <button id="btnRemoverAdmin" class="btn btn-warning">Remover Administração</button>
+                    <button id="btnRemoverUsuario" class="btn btn-danger">Remover Usuário</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../assets/js/gerenciar-usuarios.js"></script>
+</body>
+</html>

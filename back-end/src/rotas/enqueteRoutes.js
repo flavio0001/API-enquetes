@@ -14,7 +14,7 @@ routes.post("/opcoes/:id/votar", authMiddleware, EnqueteController.votarNaOpcao)
 routes.get("/", authMiddleware, EnqueteController.listarEnquetes);
 routes.post("/", authMiddleware, EnqueteController.criarEnquete);
 routes.get("/:id", authMiddleware, EnqueteController.buscarEnquetePorId);
-routes.put("/:id", authMiddleware, EnqueteController.atualizarTitulo);
+//routes.put("/:id", authMiddleware, EnqueteController.atualizarTitulo);
 routes.delete("/:id", authMiddleware, EnqueteController.excluirEnquete);
 
 export default routes;

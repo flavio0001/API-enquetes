@@ -24,8 +24,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Transformar as opções em um array (separadas por vírgula)
-        const opcoes = opcoesTexto.split(",").map(opcao => opcao.trim()).filter(opcao => opcao !== "");
+        // Transformar as opções em um array (separadas por nova linha "\n")
+        const opcoes = opcoesTexto.split("\n").map(opcao => opcao.trim()).filter(opcao => opcao !== "");
 
         if (opcoes.length === 0) {
             alert("Adicione pelo menos uma opção válida.");

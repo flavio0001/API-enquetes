@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Enquetes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <h2 class="mb-4">Gerenciar Enquetes</h2>
+
+        <!-- Lista de Enquetes -->
+        <div class="row" id="lista-enquetes">
+            <p class="text-center">Carregando enquetes...</p>
+        </div>
+    </div>
+
+    <!-- Modal de Detalhes da Enquete -->
+    <div class="modal fade" id="modalEnquete" tabindex="-1" aria-labelledby="modalEnqueteLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitulo"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>ID do Usuário:</strong> <span id="modalAutorId"></span></p>
+                    <p><strong>Nome do Usuário:</strong> <span id="modalAutorNome"></span></p>
+                    <p><strong>Data de Criação:</strong> <span id="modalCriadoEm"></span></p>
+                    <p><strong>Data Final:</strong> <span id="modalDataFim"></span></p>
+                    <p><strong>Descrição:</strong> <span id="modalDescricao"></span></p>
+                    <h5>Opções e Votos:</h5>
+                    <ul class="list-group" id="modalOpcoes"></ul>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-danger" id="btnRemover">Remover Enquete</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script para carregar as enquetes -->
+    <script src="/assets/js/gerenciar-enquetes.js"></script>
+</body>
+</html>

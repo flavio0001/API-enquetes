@@ -61,8 +61,26 @@ class EnqueteController {
             const { titulo, descricao, dataFim, opcoes } = req.body;
             const autorId = parseInt(req.user.id);
 
-            if (!titulo || !descricao || !dataFim || !Array.isArray(opcoes) || opcoes.length === 0 || isNaN(autorId)) {
+            if (!titulo || !descricao || !dataFim || !opcoes || isNaN(autorId)) {
                 return res.status(400).json({ message: "Todos os campos são obrigatórios." });
+            }
+
+            let opcoesFormatadas = [];
+
+            // Se as opções vierem como uma string única separada por \n (nova linha), transforma em array
+            if (typeof opcoes === "string") {
+                opcoesFormatadas = opcoes.split("\n").map(op => op.trim()).filter(op => op.length > 0);
+            } 
+            // Se já for um array JSON, mantém o formato correto
+            else if (Array.isArray(opcoes)) {
+                opcoesFormatadas = opcoes.map(op => op.trim()).filter(op => op.length > 0);
+            } 
+            else {
+                return res.status(400).json({ message: "Formato inválido para as opções." });
+            }
+
+            if (opcoesFormatadas.length === 0) {
+                return res.status(400).json({ message: "A enquete precisa ter pelo menos uma opção válida." });
             }
 
             const novaEnquete = await prisma.enquete.create({
@@ -71,7 +89,7 @@ class EnqueteController {
                     descricao,
                     dataFim: new Date(dataFim),
                     autorId,
-                    opcoes: { create: opcoes.map(texto => ({ texto })) },
+                    opcoes: { create: opcoesFormatadas.map(texto => ({ texto })) },
                 },
             });
 
@@ -170,28 +188,6 @@ class EnqueteController {
         } catch (error) {
             console.error("Erro ao buscar enquete:", error.message);
             res.status(500).json({ message: "Erro ao buscar enquete.", error: error.message });
-        }
-    }
-
-    // Método para atualizar o título de uma enquete
-    static async atualizarTitulo(req, res) {
-        try {
-            const { titulo } = req.body;
-            const enqueteId = parseInt(req.params.id);
-
-            if (!titulo || isNaN(enqueteId)) {
-                return res.status(400).json({ message: "Dados inválidos." });
-            }
-
-            const enqueteAtualizada = await prisma.enquete.update({
-                where: { id: enqueteId },
-                data: { titulo: titulo.trim() }
-            });
-
-            res.status(200).json(enqueteAtualizada);
-        } catch (error) {
-            console.error("Erro ao atualizar título:", error.message);
-            res.status(500).json({ message: "Erro ao atualizar título.", error: error.message });
         }
     }
 

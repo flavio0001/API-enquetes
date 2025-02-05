@@ -11,7 +11,7 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href=".dashboard-area-do-usuariohtml">Página Inicial</a>
+            <a class="navbar-brand" href="dashboard-area-do-usuario.html">Página Inicial</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -32,8 +32,9 @@
                     <textarea class="form-control" id="descricaoEnquete" rows="3" required></textarea>
                 </div>
                 <div class="mb-3">
-                    <label for="opcoesEnquete" class="form-label">Opções (separe por vírgula)</label>
-                    <input type="text" class="form-control" id="opcoesEnquete" required>
+                    <label for="opcoesEnquete" class="form-label">Opções (digite cada opção em uma linha separada)</label>
+                    <textarea class="form-control" id="opcoesEnquete" rows="4" required></textarea>
+                    <small class="form-text text-muted">Digite cada opção em uma nova linha.</small>
                 </div>
                 <div class="mb-3">
                     <label for="dataFimEnquete" class="form-label">Data de Fim</label>

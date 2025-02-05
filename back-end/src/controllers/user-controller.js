@@ -44,7 +44,7 @@ export const registerUser = async (req, res) => {
         username,
         email: email.toLowerCase(),
         password: hashedPassword,
-        tipoId: userType.id, // Define o tipo do usuário
+        tipoId: userType.id,
       },
     });
 
@@ -62,7 +62,7 @@ export const loginUser = async (req, res) => {
     // Verifica se o usuário existe
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
-      include: { tipo: true }, // Inclui o tipo do usuário na consulta
+      include: { tipo: true },
     });
 
     if (!user) {
@@ -76,12 +76,11 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({ message: 'Senha inválida.' });
     }
 
-    // Define a URL de redirecionamento com base no tipo de usuário
     const redirectUrl = user.tipo.nome === 'ADMINISTRADOR'
       ? '/security/dashboard-panel-admin.html'
       : '/security/dashboard-area-do-usuario.html';
 
-    // Gera um token JWT com o tipo de usuário
+    // Gera um token JWT
     const token = jwt.sign(
       { id: user.id, username: user.username, tipoId: user.tipoId, tipoNome: user.tipo.nome },
       process.env.JWT_SECRET,
@@ -91,5 +90,58 @@ export const loginUser = async (req, res) => {
     res.status(200).json({ message: 'Login bem-sucedido!', token, redirectUrl });
   } catch (error) {
     res.status(500).json({ message: 'Erro ao autenticar usuário.', error: error.message });
+  }
+};
+
+//Função para listar todos os usuários
+export const listarUsuarios = async (req, res) => {
+  try {
+    const usuarios = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        tipo: { select: { nome: true } },
+        createdAt: true,
+        updatedAt: true
+      },
+      orderBy: { username: "asc" }
+    });
+
+    res.status(200).json(usuarios);
+  } catch (error) {
+    res.status(500).json({ message: "Erro ao buscar usuários.", error: error.message });
+  }
+};
+
+//Função para atualizar o tipo de usuário (Administrador <-> Cliente)
+export const atualizarTipoUsuario = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    // Verifica se o novo tipo é válido
+    if (!["ADMINISTRADOR", "CLIENTE"].includes(role)) {
+      return res.status(400).json({ message: "Tipo de usuário inválido." });
+    }
+
+    // Busca o ID do novo tipo de usuário
+    const userType = await prisma.tipoUsuario.findUnique({
+      where: { nome: role },
+    });
+
+    if (!userType) {
+      return res.status(400).json({ message: "Tipo de usuário não encontrado." });
+    }
+
+    // Atualiza o tipo do usuário no banco
+    await prisma.user.update({
+      where: { id: parseInt(id) },
+      data: { tipoId: userType.id }
+    });
+
+    res.status(200).json({ message: "Tipo de usuário atualizado com sucesso!" });
+  } catch (error) {
+    res.status(500).json({ message: "Erro ao atualizar usuário.", error: error.message });
   }
 };
