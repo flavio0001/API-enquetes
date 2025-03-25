@@ -1,38 +1,52 @@
-import express from "express";
-import cors from "cors"; 
-import errorHandler from "./middlewares/error-handler.js";
-import enqueteRoutes from "./rotas/enqueteRoutes.js";
-import userRoutes from "./rotas/user-routes.js"; 
-import DashboardRoutes from "./rotas/dashboardRoutes.js";
-import denunciaRoutes from "./rotas/denunciaRoutes.js";
+// src/app.js
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import errorHandler from './middlewares/errorHandler.js';
+import userRoutes from './routes/userRoutes.js';
+import enqueteRoutes from './routes/enqueteRoutes.js';
+import denunciaRoutes from './routes/denunciaRoutes.js';
+import comentarioRoutes from './routes/comentarioRoutes.js';
+import { rateLimiter } from './middlewares/rateLimiter.js';
 
 const app = express();
 
-// Configuração de CORS para permitir qualquer origem
+// Configurações de segurança básicas
+app.use(helmet());
+
+// Configuração de CORS segura
 app.use(cors({
-    origin: "*",
-    methods: "GET,POST,PUT,DELETE,OPTIONS",
-    allowedHeaders: "Content-Type, Authorization"
+  origin: process.env.CORS_ORIGIN || '*', // Em produção, deve ser configurado para origens específicas
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Desativando Content Security Policy (CSP)
-app.use((req, res, next) => {
-    res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    next();
+// Limitador de taxa de requisições
+app.use(rateLimiter);
+
+// Parser para JSON
+app.use(express.json({ limit: '1mb' }));
+
+// Rotas principais da API
+app.use('/api/users', userRoutes);
+app.use('/api/enquetes', enqueteRoutes);
+app.use('/api/denuncias', denunciaRoutes);
+app.use('/api/comentarios', comentarioRoutes);
+
+// Rota de saúde para monitoramento
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.use(express.json());
+// Captura rotas não encontradas
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    status: 'error',
+    message: `Rota ${req.originalUrl} não encontrada` 
+  });
+});
 
-// Rotas principais
-app.use("/", DashboardRoutes);
-app.use("/enquetes", enqueteRoutes);
-app.use("/users", userRoutes); 
-app.use("/denuncias", denunciaRoutes);
-
-// Middleware de tratamento de erros
+// Middleware de tratamento de erros (deve ser o último)
 app.use(errorHandler);
 
 export default app;

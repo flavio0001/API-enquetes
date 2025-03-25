@@ -1,212 +1,140 @@
-import { PrismaClient } from "@prisma/client";
+// src/controllers/enqueteController.js
+import enqueteService from '../services/enqueteService.js';
+import { AppError } from '../utils/errors/AppError.js';
+import { validateEnqueteCreation } from '../utils/validators/enqueteValidator.js';
 
-const prisma = new PrismaClient();
-
-class EnqueteController {
-    // Método para listar enquetes de um usuário
-    static async listarEnquetes(req, res) {
-        try {
-            const userId = parseInt(req.user.id);
-            if (isNaN(userId)) {
-                return res.status(400).json({ message: "ID do usuário inválido." });
-            }
-
-            console.log("Listando enquetes para o usuário:", userId);
-
-            const enquetes = await prisma.enquete.findMany({
-                where: { autorId: userId },
-                include: {
-                    opcoes: {
-                        include: {
-                            _count: { select: { votosRegistro: true } }
-                        }
-                    },
-                    autor: true
-                }
-            });
-
-            res.status(200).json(enquetes);
-        } catch (error) {
-            console.error("Erro ao buscar enquetes:", error.message);
-            res.status(500).json({ message: "Erro ao buscar enquetes", error: error.message });
-        }
+export class EnqueteController {
+  async listarEnquetes(req, res, next) {
+    try {
+      const userId = parseInt(req.user.id);
+      const enquetes = await enqueteService.listarEnquetesPorUsuario(userId);
+      return res.status(200).json(enquetes);
+    } catch (error) {
+      if (error instanceof AppError) {
+        return res.status(error.statusCode).json({ message: error.message });
+      }
+      next(error);
     }
+  }
 
-    // Método para listar todas as enquetes disponíveis
-    static async listarTodasEnquetes(req, res) {
-        try {
-            console.log("Listando todas as enquetes disponíveis");
-
-            const enquetes = await prisma.enquete.findMany({
-                include: {
-                    opcoes: {
-                        include: {
-                            _count: { select: { votosRegistro: true } }
-                        }
-                    },
-                    autor: { select: { username: true, email: true } }
-                }
-            });
-
-            res.status(200).json(enquetes);
-        } catch (error) {
-            console.error("Erro ao buscar enquetes:", error.message);
-            res.status(500).json({ message: "Erro ao buscar enquetes", error: error.message });
-        }
+  async listarTodasEnquetes(req, res, next) {
+    try {
+      const { limit } = req.query;
+      const enquetes = await enqueteService.listarTodasEnquetes({ limit });
+      return res.status(200).json(enquetes);
+    } catch (error) {
+      if (error instanceof AppError) {
+        return res.status(error.statusCode).json({ message: error.message });
+      }
+      next(error);
     }
+  }
 
-    // Método para criar uma nova enquete
-    static async criarEnquete(req, res) {
-        try {
-            const { titulo, descricao, dataFim, opcoes } = req.body;
-            const autorId = parseInt(req.user.id);
+  async criarEnquete(req, res, next) {
+    try {
+      const errors = validateEnqueteCreation(req.body);
+      if (errors.length > 0) {
+        return res.status(400).json({ message: 'Erro de validação', errors });
+      }
 
-            if (!titulo || !descricao || !dataFim || !opcoes || isNaN(autorId)) {
-                return res.status(400).json({ message: "Todos os campos são obrigatórios." });
-            }
-
-            let opcoesFormatadas = [];
-
-            // Se as opções vierem como uma string única separada por \n (nova linha), transforma em array
-            if (typeof opcoes === "string") {
-                opcoesFormatadas = opcoes.split("\n").map(op => op.trim()).filter(op => op.length > 0);
-            } 
-            // Se já for um array JSON, mantém o formato correto
-            else if (Array.isArray(opcoes)) {
-                opcoesFormatadas = opcoes.map(op => op.trim()).filter(op => op.length > 0);
-            } 
-            else {
-                return res.status(400).json({ message: "Formato inválido para as opções." });
-            }
-
-            if (opcoesFormatadas.length === 0) {
-                return res.status(400).json({ message: "A enquete precisa ter pelo menos uma opção válida." });
-            }
-
-            const novaEnquete = await prisma.enquete.create({
-                data: {
-                    titulo,
-                    descricao,
-                    dataFim: new Date(dataFim),
-                    autorId,
-                    opcoes: { create: opcoesFormatadas.map(texto => ({ texto })) },
-                },
-            });
-
-            res.status(201).json(novaEnquete);
-        } catch (error) {
-            console.error("Erro ao criar enquete:", error.message);
-            res.status(500).json({ message: "Erro ao criar enquete.", error: error.message });
-        }
+      const autorId = parseInt(req.user.id);
+      const enquete = await enqueteService.criarEnquete(req.body, autorId);
+      
+      return res.status(201).json(enquete);
+    } catch (error) {
+      if (error instanceof AppError) {
+        return res.status(error.statusCode).json({ message: error.message });
+      }
+      next(error);
     }
+  }
 
-    // Método para votar em uma opção
-    static async votarNaOpcao(req, res) {
-        try {
-            const opcaoId = parseInt(req.params.id);
-            const userId = parseInt(req.user.id);
-
-            if (isNaN(opcaoId) || isNaN(userId)) {
-                return res.status(400).json({ message: "ID inválido." });
-            }
-
-            console.log(`Usuário ${userId} tentando votar na opção ${opcaoId}...`);
-
-            // Verifica se a opção existe
-            const opcaoExistente = await prisma.opcao.findUnique({
-                where: { id: opcaoId },
-                include: { enquete: true },
-            });
-
-            if (!opcaoExistente) {
-                return res.status(404).json({ message: "Opção não encontrada." });
-            }
-
-            const enqueteId = opcaoExistente.enqueteId;
-
-            // Verifica se o usuário já votou em alguma opção dessa enquete
-            const votoExistente = await prisma.voto.findFirst({
-                where: {
-                    userId,
-                    opcao: { enqueteId: enqueteId }
-                },
-            });
-
-            if (votoExistente) {
-                if (votoExistente.opcaoId === opcaoId) {
-                    console.log(`Removendo voto do usuário ${userId} na opção ${opcaoId}`);
-                    await prisma.voto.delete({
-                        where: { id: votoExistente.id },
-                    });
-                    return res.status(200).json({ message: "Voto removido." });
-                } else {
-                    return res.status(400).json({ message: "Você já votou nesta enquete." });
-                }
-            }
-
-            await prisma.voto.create({
-                data: {
-                    userId,
-                    opcaoId,
-                },
-            });
-
-            console.log(`Voto registrado com sucesso para a opção ${opcaoId}.`);
-            res.status(200).json({ message: "Voto registrado com sucesso!" });
-
-        } catch (error) {
-            console.error("Erro ao registrar voto:", error);
-            res.status(500).json({ message: "Erro ao registrar voto.", error: error.message });
-        }
+  async votarNaOpcao(req, res, next) {
+    try {
+      const opcaoId = parseInt(req.params.id);
+      const userId = parseInt(req.user.id);
+      
+      const resultado = await enqueteService.votarNaOpcao(opcaoId, userId);
+      
+      return res.status(200).json(resultado);
+    } catch (error) {
+      if (error instanceof AppError) {
+        return res.status(error.statusCode).json({ message: error.message });
+      }
+      next(error);
     }
+  }
 
-    // Método para buscar uma enquete por ID e incluir a contagem de votos
-    static async buscarEnquetePorId(req, res) {
-        try {
-            const enqueteId = parseInt(req.params.id);
-            if (isNaN(enqueteId)) {
-                return res.status(400).json({ message: "ID inválido." });
-            }
-
-            const enquete = await prisma.enquete.findUnique({
-                where: { id: enqueteId },
-                include: {
-                    opcoes: {
-                        include: {
-                            _count: { select: { votosRegistro: true } }
-                        }
-                    },
-                    autor: { select: { username: true } }
-                },
-            });
-
-            if (!enquete) {
-                return res.status(404).json({ message: "Enquete não encontrada" });
-            }
-
-            res.status(200).json(enquete);
-        } catch (error) {
-            console.error("Erro ao buscar enquete:", error.message);
-            res.status(500).json({ message: "Erro ao buscar enquete.", error: error.message });
-        }
+  async buscarEnquetePorId(req, res, next) {
+    try {
+      const enqueteId = parseInt(req.params.id);
+      const enquete = await enqueteService.buscarEnquetePorId(enqueteId);
+      
+      return res.status(200).json(enquete);
+    } catch (error) {
+      if (error instanceof AppError) {
+        return res.status(error.statusCode).json({ message: error.message });
+      }
+      next(error);
     }
+  }
 
-    // Método para excluir uma enquete
-    static async excluirEnquete(req, res) {
-        try {
-            const enqueteId = parseInt(req.params.id);
-            if (isNaN(enqueteId)) {
-                return res.status(400).json({ message: "ID inválido." });
-            }
-
-            await prisma.enquete.delete({ where: { id: enqueteId } });
-
-            res.status(200).json({ message: "Enquete excluída com sucesso" });
-        } catch (error) {
-            console.error("Erro ao excluir enquete:", error.message);
-            res.status(500).json({ message: "Erro ao excluir enquete.", error: error.message });
-        }
+  async excluirEnquete(req, res, next) {
+    try {
+      const enqueteId = parseInt(req.params.id);
+      const userId = parseInt(req.user.id);
+      
+      const resultado = await enqueteService.excluirEnquete(enqueteId, userId);
+      
+      return res.status(200).json(resultado);
+    } catch (error) {
+      if (error instanceof AppError) {
+        return res.status(error.statusCode).json({ message: error.message });
+      }
+      next(error);
     }
+  }
+  
+  async adicionarComentario(req, res, next) {
+    try {
+      const enqueteId = parseInt(req.params.id);
+      const userId = parseInt(req.user.id);
+      const { texto } = req.body;
+      
+      if (!texto || texto.trim().length === 0) {
+        return res.status(400).json({ message: 'O texto do comentário é obrigatório.' });
+      }
+      
+      const comentario = await enqueteService.adicionarComentario(enqueteId, userId, texto);
+      
+      return res.status(201).json(comentario);
+    } catch (error) {
+      if (error instanceof AppError) {
+        return res.status(error.statusCode).json({ message: error.message });
+      }
+      next(error);
+    }
+  }
+
+  async verificarMeuVoto(req, res, next) {
+    try {
+      const enqueteId = parseInt(req.params.id);
+      const userId = parseInt(req.user.id);
+      
+      const voto = await enqueteService.buscarVotoPorUsuarioEEnquete(userId, enqueteId);
+      
+      if (!voto) {
+        return res.status(404).json({ message: 'Voto não encontrado' });
+      }
+      
+      return res.status(200).json(voto);
+    } catch (error) {
+      if (error instanceof AppError) {
+        return res.status(error.statusCode).json({ message: error.message });
+      }
+      next(error);
+    }
+  }
 }
 
-export default EnqueteController;
+export default new EnqueteController();

@@ -1,37 +1,46 @@
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../config/auth.js';
+import { AppError } from '../utils/errors/AppError.js';
 
-dotenv.config();
-
+/**
+ * Middleware para verificar autenticação do usuário através de token JWT
+ */
 const authMiddleware = (req, res, next) => {
-    console.log(`🔍 Verificando autenticação para: ${req.method} ${req.path}`);
-
-    // Ignorar a autenticação para rotas públicas
-    if (req.path.startsWith("/public") || req.path.startsWith("/enquetes/public")) {
-        return next();
+  try {
+    // Extrai o token do cabeçalho de autorização
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader) {
+      throw new AppError('Token não fornecido. Acesso negado!', 401);
     }
-
-    const token = req.headers.authorization?.split(" ")[1];
-
-    if (!token) {
-        console.log("🚫 Acesso negado: Token não fornecido.");
-        return res.status(401).json({ message: "Token não fornecido. Acesso negado!" });
+    
+    const [bearer, token] = authHeader.split(' ');
+    
+    if (bearer !== 'Bearer' || !token) {
+      throw new AppError('Formato de token inválido. Use "Bearer [token]"', 401);
     }
-
+    
+    // Verifica e decodifica o token
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
-        console.log(`✅ Usuário autenticado: ${decoded.username} (ID: ${decoded.id})`);
-        next();
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+      next();
     } catch (error) {
-        if (error.name === "TokenExpiredError") {
-            console.log("🚫 Token expirado.");
-            return res.status(401).json({ message: "Token expirado. Faça login novamente!" });
-        } else {
-            console.log("🚫 Token inválido.");
-            return res.status(403).json({ message: "Token inválido. Acesso negado!" });
-        }
+      if (error.name === 'TokenExpiredError') {
+        throw new AppError('Token expirado. Faça login novamente!', 401);
+      } else {
+        throw new AppError('Token inválido. Acesso negado!', 403);
+      }
     }
+  } catch (error) {
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+    
+    return res.status(500).json({ 
+      message: 'Erro interno na verificação de autenticação.' 
+    });
+  }
 };
 
 export default authMiddleware;

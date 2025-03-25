@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql" // Ou "postgresql", dependendo do banco
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,43 +12,57 @@ model TipoUsuario {
   id       Int    @id @default(autoincrement())
   nome     String @unique
   usuarios User[] // Relacionamento 1:N com os usuários
+  
+  @@map("tipos_usuario") // Nome da tabela no banco de dados
 }
 
 // Definição dos usuários
 model User {
-  id        Int         @id @default(autoincrement())
-  username  String      @unique
-  email     String      @unique
-  password  String
-  tipoId    Int
-  tipo      TipoUsuario @relation(fields: [tipoId], references: [id], onDelete: Cascade)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  enquetes  Enquete[] // Relacionamento 1:N com as enquetes criadas pelo usuário
-  votos     Voto[] // Relacionamento 1:N com os votos feitos pelo usuário
-  denuncias Denuncia[] // Relacionamento 1:N com as denúncias feitas pelo usuário
+  id           Int           @id @default(autoincrement())
+  username     String        @unique
+  email        String        @unique
+  password     String
+  tipoId       Int
+  ativo        Boolean       @default(true)
+  tipo         TipoUsuario   @relation(fields: [tipoId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  enquetes     Enquete[]     // Relacionamento 1:N com as enquetes criadas pelo usuário
+  votos        Voto[]        // Relacionamento 1:N com os votos feitos pelo usuário
+  denuncias    Denuncia[]    // Relacionamento 1:N com as denúncias feitas pelo usuário
+  comentarios  Comentario[]  // Relacionamento 1:N com os comentários feitos pelo usuário
+  
+  @@map("usuarios") // Nome da tabela no banco de dados
 }
 
 // Definição das enquetes
 model Enquete {
-  id        Int        @id @default(autoincrement())
-  titulo    String
-  descricao String     @default("")
-  criadoEm  DateTime   @default(now())
-  dataFim   DateTime
-  autorId   Int
-  autor     User       @relation(fields: [autorId], references: [id], onDelete: Cascade) // Adicionado relacionamento explícito
-  opcoes    Opcao[] // Relacionamento 1:N com Opção
-  denuncias Denuncia[] // Relacionamento 1:N com as denúncias recebidas pela enquete
+  id          Int          @id @default(autoincrement())
+  titulo      String
+  descricao   String       @default("")
+  criadoEm    DateTime     @default(now())
+  dataFim     DateTime
+  ativa       Boolean      @default(true)
+  autorId     Int
+  autor       User         @relation(fields: [autorId], references: [id], onDelete: Cascade)
+  opcoes      Opcao[]      // Relacionamento 1:N com Opção
+  denuncias   Denuncia[]   // Relacionamento 1:N com as denúncias recebidas pela enquete
+  comentarios Comentario[] // Relacionamento 1:N com os comentários na enquete
+  
+  @@index([autorId], name: "idx_autor")
+  @@map("enquetes") // Nome da tabela no banco de dados
 }
 
 // Definição das opções de resposta
 model Opcao {
-  id            Int     @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   texto         String
   enqueteId     Int
-  enquete       Enquete @relation(fields: [enqueteId], references: [id], onDelete: Cascade)
-  votosRegistro Voto[] // Relacionamento 1:N com os votos
+  enquete       Enquete  @relation(fields: [enqueteId], references: [id], onDelete: Cascade)
+  votosRegistro Voto[]   // Relacionamento 1:N com os votos
+  
+  @@index([enqueteId], name: "idx_enquete")
+  @@map("opcoes") // Nome da tabela no banco de dados
 }
 
 // Definição dos votos
@@ -59,18 +73,44 @@ model Voto {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   opcao     Opcao    @relation(fields: [opcaoId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-
+  
   @@unique([userId, opcaoId]) // Garante que um usuário só pode votar uma vez por opção
+  @@index([userId], name: "idx_user")
+  @@index([opcaoId], name: "idx_opcao")
+  @@map("votos") // Nome da tabela no banco de dados
 }
 
+// Definição das denúncias
 model Denuncia {
   id        Int      @id @default(autoincrement())
   userId    Int
   enqueteId Int
+  motivo    String?  @db.Text
+  status    String   @default("PENDENTE") // PENDENTE, ANALISADA, REJEITADA, ACEITA
   criadoEm  DateTime @default(now())
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  enquete Enquete @relation(fields: [enqueteId], references: [id], onDelete: Cascade)
-
+  analisadaEm DateTime?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enquete   Enquete  @relation(fields: [enqueteId], references: [id], onDelete: Cascade)
+  
   @@unique([userId, enqueteId]) // Usuário pode denunciar uma enquete apenas uma vez
+  @@index([userId], name: "idx_user_denuncia")
+  @@index([enqueteId], name: "idx_enquete_denuncia")
+  @@map("denuncias") // Nome da tabela no banco de dados
+}
+
+// Novo modelo para comentários
+model Comentario {
+  id        Int      @id @default(autoincrement())
+  texto     String   @db.Text
+  userId    Int
+  enqueteId Int
+  criadoEm  DateTime @default(now())
+  editadoEm DateTime @updatedAt
+  ativo     Boolean  @default(true)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enquete   Enquete  @relation(fields: [enqueteId], references: [id], onDelete: Cascade)
+  
+  @@index([userId], name: "idx_user_comentario")
+  @@index([enqueteId], name: "idx_enquete_comentario")
+  @@map("comentarios") // Nome da tabela no banco de dados
 }
