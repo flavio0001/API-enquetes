@@ -1,4 +1,3 @@
-// src/app.js
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -8,6 +7,7 @@ import enqueteRoutes from './routes/enqueteRoutes.js';
 import denunciaRoutes from './routes/denunciaRoutes.js';
 import comentarioRoutes from './routes/comentarioRoutes.js';
 import { rateLimiter } from './middlewares/rateLimiter.js';
+import { iniciarJobsEnquete } from './jobs/enqueteStatusJob.js';
 
 const app = express();
 
@@ -48,5 +48,8 @@ app.use('*', (req, res) => {
 
 // Middleware de tratamento de erros (deve ser o último)
 app.use(errorHandler);
+
+// Inicia o job de verificação de enquetes expiradas
+iniciarJobsEnquete();
 
 export default app;

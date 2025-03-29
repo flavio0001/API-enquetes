@@ -14,13 +14,31 @@ export class EnqueteRepository {
       }
     });
     
-    // Adiciona totalVotos a cada enquete
-    return enquetes.map(enquete => this._addTotalVotos(enquete));
+    // Verifica e atualiza enquetes expiradas
+    const dataAtual = new Date();
+    const enquetesAtualizadas = [];
+    
+    for (const enquete of enquetes) {
+      if (enquete.ativa && new Date(enquete.dataFim) < dataAtual) {
+        // Atualiza no banco de dados
+        await prisma.enquete.update({
+          where: { id: enquete.id },
+          data: { ativa: false }
+        });
+        
+        // Atualiza localmente
+        enquete.ativa = false;
+      }
+      enquetesAtualizadas.push(this._addTotalVotos(enquete));
+    }
+    
+    return enquetesAtualizadas;
   }
   
   async findAll(options = {}) {
     const { limit } = options;
     
+    // Recupera as enquetes marcadas como ativas no banco de dados
     const enquetes = await prisma.enquete.findMany({
       where: { ativa: true },
       include: {
@@ -40,8 +58,32 @@ export class EnqueteRepository {
       ...(limit && { take: Number(limit) })
     });
     
-    // Adiciona totalVotos a cada enquete
-    return enquetes.map(enquete => this._addTotalVotos(enquete));
+    // Verifica e atualiza enquetes que já expiraram mas ainda estão marcadas como ativas
+    const dataAtual = new Date();
+    const enquetesAtualizadas = [];
+    
+    // Processamento de enquetes e verificação de expiração
+    for (const enquete of enquetes) {
+      const dataFim = new Date(enquete.dataFim);
+      
+      if (dataFim < dataAtual) {
+        // Enquete expirada - atualiza no banco
+        await prisma.enquete.update({
+          where: { id: enquete.id },
+          data: { ativa: false }
+        });
+        
+        // Para fins de listagem atual, podemos mostrar ou não dependendo da regra de negócio
+        // Se quiser ocultar enquetes expiradas da lista, comente o código abaixo
+        enquete.ativa = false;
+        enquetesAtualizadas.push(this._addTotalVotos(enquete));
+      } else {
+        // Enquete ainda válida
+        enquetesAtualizadas.push(this._addTotalVotos(enquete));
+      }
+    }
+    
+    return enquetesAtualizadas;
   }
   
   async create(enqueteData) {
@@ -85,6 +127,18 @@ export class EnqueteRepository {
     });
     
     if (!enquete) return null;
+    
+    // Verifica se a enquete está expirada, mas ainda marcada como ativa
+    if (enquete.ativa && new Date(enquete.dataFim) < new Date()) {
+      // Atualiza o status no banco de dados
+      await prisma.enquete.update({
+        where: { id },
+        data: { ativa: false }
+      });
+      
+      // Atualiza o objeto local
+      enquete.ativa = false;
+    }
     
     // Adiciona totalVotos à enquete
     return this._addTotalVotos(enquete);
